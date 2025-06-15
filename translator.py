@@ -1,16 +1,35 @@
-from transformers import MarianMTModel, MarianTokenizer
+from transformers import T5Tokenizer, T5ForConditionalGeneration
 
-def translate_text(text, target_lang):
-    if target_lang == "en":
-        model_name = "Helsinki-NLP/opus-mt-pl-en"
-    elif target_lang == "pl":
-        model_name = "Helsinki-NLP/opus-mt-en-pl"
-    else:
-        return "Nieobsługiwany język docelowy."
+def translate_text(command):
+    # Remove command prefix and split parts
+    parts = command.strip().split(" ", 3)
 
-    tokenizer = MarianTokenizer.from_pretrained(model_name)
-    model = MarianMTModel.from_pretrained(model_name)
+    _, source_lang, target_lang, text = parts
 
-    tokens = tokenizer(text, return_tensors="pt", padding=True)
-    translated = model.generate(**tokens)
-    return tokenizer.decode(translated[0], skip_special_tokens=True)
+    # Define language mapping for T5
+    lang_map = {
+        "en": "English",
+        "pl": "Polish",
+        "de": "German",
+        "fr": "French",
+        "es": "Spanish",
+    }
+
+    if source_lang not in lang_map or target_lang not in lang_map:
+        return "Unsupported language code. Use: en, pl, de, fr, es"
+
+    # Build the T5 input
+    task_prefix = f"translate {lang_map[source_lang]} to {lang_map[target_lang]}: "
+    input_text = task_prefix + text
+
+    # Load model and tokenizer
+    model_name = "t5-base"
+    tokenizer = T5Tokenizer.from_pretrained(model_name)
+    model = T5ForConditionalGeneration.from_pretrained(model_name)
+
+    # Tokenize and translate
+    input_ids = tokenizer(input_text, return_tensors="pt").input_ids
+    output_ids = model.generate(input_ids, max_length=128)
+    translation = tokenizer.decode(output_ids[0], skip_special_tokens=True)
+
+    return translation

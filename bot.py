@@ -21,10 +21,34 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 async def on_ready():
     print(f'Zalogowano jako {bot.user}')
 
+@bot.command(name="komendy")
+async def commands_list(ctx):
+    help_text = """
+**Dostępne komendy:**
+
+`!tlumacz [z] [do] [tekst]` – Tłumaczy tekst z języka `z` na `do`.  
+Przykład: `!tlumacz pl en Cześć!`
+
+`!podsumuj [limit]` – Podsumowuje ostatnie wiadomości z kanału. Domyślnie 50.  
+Przykład: `!podsumuj 30`
+
+`!pytaj [pytanie]` – Odpowiada na pytanie na podstawie historii rozmowy.  
+Przykład: `!pytaj Co omawialiśmy wcześniej?`
+
+`!komendy` – Wyświetla listę dostępnych komend.
+    """
+    await ctx.send(help_text)
+
+
 @bot.command(name="tlumacz")
-async def translate(ctx, lang: str, *, text: str):
-    translated = translate_text(text, lang)
-    await ctx.send(f"Tłumaczenie ({lang}): {translated}")
+async def translate(ctx, source_lang: str, target_lang: str, *, text: str):
+    command_text = f"!tlumacz {source_lang} {target_lang} {text}"
+    try:
+        translation = translate_text(command_text)
+    except Exception as e:
+        await ctx.send(f"Błąd tłumaczenia: {str(e)}")
+        return
+    await ctx.send(f"Tłumaczenie ({source_lang} → {target_lang}): {translation}")
 
 @bot.command(name="podsumuj")
 async def summarize(ctx, limit: int = 50):
