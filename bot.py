@@ -13,10 +13,10 @@ from moderation import is_inappropriate
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
 
-# Load shared FLAN-T5-XL model and tokenizer
+# Load shared FLAN-T5 model and tokenizer
 print("Loading models...")
-flan_tokenizer = T5Tokenizer.from_pretrained("google/flan-t5-xl")
-flan_model = T5ForConditionalGeneration.from_pretrained("google/flan-t5-xl")
+flan_tokenizer = T5Tokenizer.from_pretrained("google/flan-t5-base")
+flan_model = T5ForConditionalGeneration.from_pretrained("google/flan-t5-base")
 
 # Load spam detection pipeline
 moderation_pipeline = pipeline("text-classification", model="mrm8488/bert-tiny-finetuned-sms-spam-detection")
@@ -72,7 +72,7 @@ async def translate(ctx, source_lang: str, target_lang: str, *, text: str):
 @bot.command(name="podsumuj")
 async def summarize(ctx, limit: int = 50):
     messages = [
-            f"{msg.author.display_name}: {msg.content}"
+            f"{msg.content}"
             async for msg in ctx.channel.history(limit=limit)
             if msg.author != bot.user and not msg.content.startswith("!")
         ]
