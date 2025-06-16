@@ -1,9 +1,10 @@
-from transformers import pipeline
-
-qa_pipeline = pipeline("question-answering", model="deepset/roberta-base-squad2")
-
-def answer_question(question, context):
+def answer_question(question, context, model, tokenizer):
     if len(context.split()) < 50:
         return "Zbyt mało kontekstu, by odpowiedzieć."
-    result = qa_pipeline(question=question, context=context)
-    return result['answer']
+
+    input_text = f"question: {question} context: {context}"
+    print(f"Input for question answering: {input_text[:100]}...")  # Debugging line to check input
+    input_ids = tokenizer(input_text, return_tensors="pt", truncation=True, max_length=512).input_ids
+    output_ids = model.generate(input_ids, max_length=100)
+    answer = tokenizer.decode(output_ids[0], skip_special_tokens=True)
+    return answer
