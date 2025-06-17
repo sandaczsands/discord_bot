@@ -37,7 +37,7 @@ async def commands_list(ctx):
     help_text = """
 **Dostępne komendy:**
 
-`!tlumacz [z] [do] [tekst]` – Tłumaczy tekst z języka `z` na `do`.  
+`!tlumacz [z] [do] [tekst]` - Tłumaczy tekst z języka `z` na `do`.  
 Przykład: `!tlumacz pl en Cześć!`
 `!tlumacz` obsługuje następujące języki:
 ```json
@@ -47,13 +47,13 @@ Przykład: `!tlumacz pl en Cześć!`
         "fr": "French",
         "es": "Spanish",
 ```
-!podsumuj [limit] – Podsumowuje ostatnie wiadomości z kanału. Domyślnie 50.
-Przykład: !podsumuj 30
+`!podsumuj [limit]` - Podsumowuje ostatnie wiadomości z kanału. Domyślnie 50.
+Przykład: `!podsumuj 30`
 
-!pytaj [pytanie] – Odpowiada na pytanie na podstawie historii rozmowy.
-Przykład: !pytaj Co omawialiśmy wcześniej?
+`!pytaj [pytanie]` - Odpowiada na pytanie na podstawie historii rozmowy.
+Przykład: `!pytaj Co omawialiśmy wcześniej?`
 
-!komendy – Wyświetla listę dostępnych komend.
+`!komendy` - Wyświetla listę dostępnych komend.
 """
     await ctx.send(help_text)
 
@@ -70,22 +70,23 @@ async def translate(ctx, source_lang: str, target_lang: str, *, text: str):
 
 @bot.command(name="podsumuj")
 async def summarize(ctx, limit: int = 50):
-    messages = [
-            f"{msg.content}"
-            async for msg in ctx.channel.history(limit=limit)
-            if msg.author != bot.user and not msg.content.startswith("!")
-        ]
+    messages = list(reversed([
+        f"{msg.content}"
+        async for msg in ctx.channel.history(limit=limit)
+        if msg.author != bot.user and not msg.content.startswith("!")
+    ]))
+
     content = " ".join(messages)
     summary = summarize_text(content, flan_model, flan_tokenizer)
     await ctx.send(f"Podsumowanie:\n{summary}")
 
 @bot.command(name="pytaj")
 async def ask(ctx, *, question: str):
-    messages = [
+    messages = list(reversed([
             f"{msg.author.display_name}: {msg.content}"
             async for msg in ctx.channel.history(limit=100)
             if msg.author != bot.user and not msg.content.startswith("!")
-        ]
+        ]))
     context = " ".join(messages)
     answer = answer_question(question, context, flan_model, flan_tokenizer)
     await ctx.send(f"Odpowiedź: {answer}")
