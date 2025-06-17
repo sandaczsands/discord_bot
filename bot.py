@@ -1,14 +1,15 @@
 import discord
 from discord.ext import commands
 import os
+import re
 from dotenv import load_dotenv
 
-from transformers import T5Tokenizer, T5ForConditionalGeneration, pipeline
+from transformers import T5Tokenizer, T5ForConditionalGeneration
 
 from translator import translate_text
 from summarizer import summarize_text
 from qa import answer_question
-from moderation import is_inappropriate
+from moderation import MessageModerator
 
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
@@ -18,8 +19,6 @@ print("Loading models...")
 flan_tokenizer = T5Tokenizer.from_pretrained("google/flan-t5-base")
 flan_model = T5ForConditionalGeneration.from_pretrained("google/flan-t5-base")
 
-# Load spam detection pipeline
-moderation_pipeline = pipeline("text-classification", model="mrm8488/bert-tiny-finetuned-sms-spam-detection")
 print("Models loaded.")
 
 intents = discord.Intents.default()
@@ -92,15 +91,54 @@ async def ask(ctx, *, question: str):
     answer = answer_question(question, context, flan_model, flan_tokenizer)
     await ctx.send(f"Odpowiedź: {answer}")
 
+# moderation setup
+
+moderator = MessageModerator(spam_threshold=0.6, similarity_threshold=0.6)
+
 @bot.event
 async def on_message(message):
     if message.author == bot.user:
         return
-    if is_inappropriate(message.content, moderation_pipeline):
-        await message.delete()
-        await message.channel.send("Usunięto nieodpowiednią wiadomość.")
+
+    content = message.content.strip()
+    exempt_commands = [
+        r"!podsumuj(\s+\d{1,3})?",
+        r"!ustaw_spam\s+\d*\.?\d+",
+        r"!ustaw_similarity\s+\d*\.?\d+"
+    ]
+    if any(re.fullmatch(cmd, content) for cmd in exempt_commands):
+        await bot.process_commands(message)
         return
-    
+
+    is_bad, reason = await moderator.is_inappropriate(message)
+    if is_bad:
+        await message.delete()
+        await message.channel.send(f"Usunięto wiadomość ({reason}).")
+        return
+
     await bot.process_commands(message)
+
+@bot.command(name="ustaw_spam")
+async def set_spam_threshold(ctx, value: float):
+    if ctx.channel.name != "komendy":
+        await ctx.send("Ta komenda może być używana tylko w kanale #komendy.")
+        return
+    if not 0.0 <= value <= 1.0:
+        await ctx.send("Wartość musi być między 0.0 a 1.0.")
+        return
+    moderator.spam_threshold = value
+    await ctx.send(f"Ustawiono próg spamu na {value:.2f}.")
+
+@bot.command(name="ustaw_similarity")
+async def set_similarity_threshold(ctx, value: float):
+    if ctx.channel.name != "komendy":
+        await ctx.send("Ta komenda może być używana tylko w kanale #komendy.")
+        return
+    if not 0.0 <= value <= 1.0:
+        await ctx.send("Wartość musi być między 0.0 a 1.0.")
+        return
+    moderator.similarity_threshold = value
+    await ctx.send(f"Ustawiono próg podobieństwa na {value:.2f}.")
+
 
 bot.run(TOKEN)
